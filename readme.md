@@ -14,13 +14,13 @@ This engine maximizes panel refresh rates and color depth through the use of hig
 The **RP2350 HUB75 AGP** is my second iteration tackling the HUB75 problem on the Pico platform - hopefully a less naive attempt than the first.
 
 ### 📅 2024: The RP2040 Precursor
-Developed during a 2024 New Year's break, the first-gen driver established the "Single Stream" philosophy for the RP2040:
+Developed during a 2024 New Year's break, the first-gen 2 channel driver established the "Single Stream" philosophy for the RP2040:
 * **Interlaced Framebuffer:** A single DMA stream handled the entire matrix by interleaving RGB data, row selection, and timing markers into a single memory block.
 * **BCM Engine:** 8-to-10 bitplane Binary Code Modulation.
 * **Cascaded PIO:** Proved the concept of linking state machines via a DMA bridge for zero-CPU rendering.
 
-### 📺 Demonstration of the 2024 Engine (96x96 Panel)
-
+### 📺 Demonstration of the 2024 Engine (96x96 Display - two 96x48 pannels, one per channel)
+Used panels: https://www.waveshare.com/rgb-matrix-p2.5-96x48-f.htm
 | Link |
 | :--- |
 | [Watch v1.mp4](https://i.imgur.com/oINd6zx.mp4) |
@@ -42,7 +42,7 @@ The pipeline natively handles multiple pixel formats, mapping them through a hig
 
 * **8-bit Palette / RGB332** Resolves up to **RGB101010** (30-bit color) post-gamma.
 * **RGB565:** Resolves up to **RGB101010** (30-bit color) post-gamma.
-* **RGB888:** Resolves up to **RGB121212** (36-bit color) (RGB212121 - 63 bit theoretical) post-gamma.
+* **RGB888:** Resolves up to **RGB121212** (36-bit color) (RGB202020 - 60-bit theoretical) post-gamma.
 
 Gamma coefficient is configurable in range 2.0 to 3.0.
 
@@ -158,4 +158,5 @@ void __no_inline_not_in_flash_func(conv2hub75)(rgb* drgbi, uint32_t* fb, bool ha
             fb[addr_hub75 - 1] |= 1 << end_bit_pos;
         }  
     }
+
 }
