@@ -46,8 +46,6 @@ The pipeline natively handles multiple pixel formats, mapping them through high-
 
 ## 🪟 Viewport & Buffer Management
 
-[Image of 2D pixel buffer viewport wrapping and infinite scrolling]
-
 The engine decouples physical display size from memory buffer size, allowing for zero-overhead hardware panning:
 
 * **Oversized Buffers:** Supports RGB backing buffers physically larger than the active display matrix.
