@@ -7,11 +7,11 @@
 
 A next-generation, high-performance HUB75 LED matrix pipeline built from the ground up for the Raspberry Pi RP2350.
 
-This engine maximizes panel refresh rates and color depth through highly optimized ASM bit-shuffling and a targeted RAM footprint. At the hardware level, it utilizes cascaded PIO state machines linked via a DMA bridge, using ping-pong signaling to guarantee perfect phase synchronization.
+This engine maximizes panel refresh rates and color depth through the use of highly optimized ASM bit-shuffling and a targeted RAM footprint. At the hardware level, it utilizes cascaded PIO state machines linked via a DMA bridge, using ping-pong signaling to guarantee perfect phase synchronization.
 
 ## 📜 Project Evolution & History
 
-The **RP2350 HUB75 AGP** is my second iteration tackling the HUB75 problem on the Pico platform—hopefully a less naive attempt than the first.
+The **RP2350 HUB75 AGP** is my second iteration tackling the HUB75 problem on the Pico platform - hopefully a less naive attempt than the first.
 
 ### 📅 2024: The RP2040 Precursor
 Developed during a 2024 New Year's break, the first-gen driver established the "Single Stream" philosophy for the RP2040:
@@ -21,7 +21,7 @@ Developed during a 2024 New Year's break, the first-gen driver established the "
 
 ### 📺 Demonstration of the 2024 Engine (96x96 Panel)
 
- Link |
+| Link |
 | :--- |
 | [Watch v1.mp4](https://i.imgur.com/oINd6zx.mp4) |
 | [Watch v2.mp4](https://i.imgur.com/piWeAsn.mp4) |
@@ -38,60 +38,92 @@ Developed during a 2024 New Year's break, the first-gen driver established the "
 
 ## 🎨 Supported Color Formats
 
-The pipeline natively handles multiple pixel formats, mapping them through high-precision gamma correction:
+The pipeline natively handles multiple pixel formats, mapping them through a high-precision gamma correction curve:
 
-* **8-bit Palette / RGB332**
+* **8-bit Palette / RGB332** Resolves up to **RGB101010** (30-bit color) post-gamma.
 * **RGB565:** Resolves up to **RGB101010** (30-bit color) post-gamma.
-* **RGB888:** Resolves up to **RGB121212** (36-bit color) post-gamma.
+* **RGB888:** Resolves up to **RGB121212** (36-bit color) (RGB212121 - 63 bit theoretical) post-gamma.
+
+Gamma coefficient is configurable in range 2.0 to 3.0.
 
 ## 🪟 Viewport & Buffer Management
 
 The engine decouples physical display size from memory buffer size, allowing for zero-overhead hardware panning:
 
-* **Oversized Buffers:** Supports RGB backing buffers physically larger than the active display matrix.
+* **Oversized Buffers:** Natively supports RGB backing buffers physically larger than the active display matrix.
 * **Relative Offset Addressing:** Pan the display window across the buffer by simply updating offset coordinates.
 * **Seamless Wrapping:** Automatic row/column wrapping when the viewport exceeds physical buffer boundaries.
+* **Mandatory Registration of RGB Buffers:** The engine validates color format, dimensions, and memory size prior to use; specifically, it enforces strict byte alignment to guarantee the atomic and high-speed operation of LDRD and LDMIA instructions within the ASM pipeline.
 
 ## 📐 Hardware Support & Wiring Topologies
 
 Supports typical indoor HUB75 panels with a **SCAN = HEIGHT / 2** multiplexing ratio (e.g., 1:16 for 32px height, 1:32 for 64px height).
 
-> **Note on Compatibility:** Development is currently limited to the panels I have in stock. Need support for 1/4 scan or other exotic multiplexing? Send me the panels.
+> **Note on Compatibility:** Development is currently limited to the panels I have in stock. 
+
+### ⚙️ Matrix Configuration Rules
+
+* **Daisy-Chaining:** Panels can be chained in both horizontal and vertical directions.
+* **Channel A (Primary):** The starting point is always the **top-left** corner of the display.
+* **Channel B (Secondary):** Must have an identical panel configuration to Channel A. It can be mapped either directly to the right (horizontal alignment) or directly below (vertical alignment) Channel A.
 
 ### 🚥 The Channel Rules (Legend)
 
 * 🟦 **1 Channel Mandatory:** Asymmetric panel counts or low-bandwidth. Driven by Channel A.
-* 🟪 **Optional:** Symmetrical splits. Use 1 channel for simplicity or 2 channels to double the refresh rate.
-* 🟩 **2 Channels Mandatory:** Maximum bandwidth configurations. Workload **must** be split across Channel A and B to maintain VSYNC and prevent flickering.
+* 🟪 **1 or 2 Channels (Optional):** Symmetrical splits with moderate bandwidth. You can daisy-chain all panels to Channel A, or wire half to Channel A and half to Channel B to double your refresh rate.
+* 🟩 **2 Channels Mandatory (The Heavyweights):** Maximum bandwidth reached. To meet VSYNC deadlines and prevent matrix flickering, you **must** split the workload perfectly in half across Channel A and Channel B.
 
 ---
 
 ### 🧩 Topology Reference Tables
 
 #### Base Panel: 32x16px
-| H \ W | 32px | 64px | 96px | 128px | 160px | 192px | 256px |
+| Height \ Width | 32px | 64px | 96px | 128px | 160px | 192px | 256px |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **16px** | 🟦 1 Ch | 🟪 Opt | 🟦 1 Ch | 🟪 Opt | 🟩 2 Ch | 🟩 2 Ch | 🟩 2 Ch |
-| **32px** | 🟪 Opt | 🟩 2 Ch | 🟩 2 Ch | 🟩 2 Ch | - | - | - |
+| **16px** | 🟦 1 Ch | 🟪 Optional | 🟦 1 Ch | 🟪 Optional | 🟩 2 Ch | 🟩 2 Ch | 🟩 2 Ch |
+| **32px** | 🟪 Optional | 🟩 2 Ch | 🟩 2 Ch | 🟩 2 Ch | - | - | - |
 | **48px** | 🟦 1 Ch | 🟩 2 Ch | - | - | - | - | - |
-| **64px** | 🟪 Opt | 🟩 2 Ch | - | - | - | - | - |
+| **64px** | 🟪 Optional | 🟩 2 Ch | - | - | - | - | - |
+| **80px** | 🟩 2 Ch | - | - | - | - | - | - |
+| **96px** | 🟩 2 Ch | - | - | - | - | - | - |
+| **128px**| 🟩 2 Ch | - | - | - | - | - | - |
 
 #### Base Panel: 32x32px
-| H \ W | 32px | 64px | 96px | 128px | 192px | 256px |
+| Height \ Width | 32px | 64px | 96px | 128px | 192px | 256px |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **32px** | 🟦 1 Ch | 🟪 Opt | 🟦 1 Ch | 🟪 Opt | 🟩 2 Ch | 🟩 2 Ch |
-| **64px** | 🟪 Opt | 🟪 Opt | 🟩 2 Ch | 🟩 2 Ch | - | - |
-| **128px**| 🟪 Opt | 🟩 2 Ch | - | - | - | - |
+| **32px** | 🟦 1 Ch | 🟪 Optional | 🟦 1 Ch | 🟪 Optional | 🟩 2 Ch | 🟩 2 Ch |
+| **64px** | 🟪 Optional | 🟪 Optional | 🟩 2 Ch | 🟩 2 Ch | - | - |
+| **96px** | 🟦 1 Ch | 🟩 2 Ch | - | - | - | - |
+| **128px**| 🟪 Optional | 🟩 2 Ch | - | - | - | - |
+| **192px**| 🟩 2 Ch | - | - | - | - | - |
+| **256px**| 🟩 2 Ch | - | - | - | - | - |
 
----
+#### Base Panel: 64x32px
+| Height \ Width | 64px | 128px | 256px |
+| :--- | :--- | :--- | :--- |
+| **32px** | 🟦 1 Ch | 🟪 Optional | 🟩 2 Ch |
+| **64px** | 🟪 Optional | 🟩 2 Ch | - |
+| **128px**| 🟩 2 Ch | - | - |
+| **256px**| 🟩 2 Ch | - | - |
+
+#### Base Panel: 64x64px
+| Height \ Width | 64px | 128px | 256px |
+| :--- | :--- | :--- | :--- |
+| **64px** | 🟦 1 Ch | 🟪 Optional | 🟩 2 Ch |
+| **128px**| 🟪 Optional | 🟩 2 Ch | - |
+| **256px**| 🟩 2 Ch | - | - |
+
+#### Base Panel: 96x48px
+| Height \ Width | 96px | 192px |
+| :--- | :--- | :--- |
+| **48px** | 🟦 1 Ch | 🟩 2 Ch |
+| **96px** | 🟩 2 Ch | - |
 
 ## 🛠️ Current Status
 
-The core rendering engine, advanced temporal dithering math, and PIO timing logic are in active development in a private repository. Source code and API documentation will be published here upon completion.
+The core rendering engine, advanced temporal dithering math, and PIO timing logic are currently in active development in a private repository. Source code and API documentation will be published here upon completion.
 
 ### 📂 Historical Archive: 2024 C-Shuffling Logic
-
-For context, this was the legacy C-based bit-packing logic that powered the precursor driver.
 
 <details>
 <summary>Expand Legacy Code</summary>
