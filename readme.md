@@ -19,7 +19,7 @@ Developed during a 2024 New Year's break, the first-gen 2 channel driver establi
 * **BCM Engine:** 8-to-10 bitplane Binary Code Modulation.
 * **Cascaded PIO:** Proved the concept of linking state machines via a DMA bridge for zero-CPU rendering.
 
-### 📺 Demonstration of the 2024 Engine (96x96 Display - two 96x48 pannels, one per channel)
+### 📺 Demonstration of the 2024 RP2040 Engine (96x96 Display - two 96x48 pannels, one per channel)
 Used panels: https://www.waveshare.com/rgb-matrix-p2.5-96x48-f.htm
 | Link |
 | :--- |
@@ -160,3 +160,4 @@ void __no_inline_not_in_flash_func(conv2hub75)(rgb* drgbi, uint32_t* fb, bool ha
     }
 
 }
+
